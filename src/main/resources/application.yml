@@ -16,7 +16,11 @@ spring:
       enabled: true
       path: /h2-console
   cache:
-    type: redis
+    type: simple
+app:
+  cache:
+    redis:
+      enabled: false
   data:
     redis:
       host: localhost
