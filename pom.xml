@@ -34,7 +34,6 @@
         <module>shared-contracts</module>
         <module>extrato-gravador</module>
         <module>extrato-consulta</module>
-        <module>comprovante-emissor</module>
     </modules>
 
     <properties>
