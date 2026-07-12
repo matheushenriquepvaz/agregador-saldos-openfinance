@@ -1,0 +1,26 @@
+{
+  "consumer": { "name": "comprovante-consulta" },
+  "provider": { "name": "comprovante-gravador" },
+  "interactions": [
+    {
+      "description": "consulta por id existente",
+      "providerStates": [ { "name": "comprovante 11111111-1111-1111-1111-111111111111 existe" } ],
+      "request": {
+        "method": "GET",
+        "path": "/interno/comprovantes/11111111-1111-1111-1111-111111111111"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "identificadorComprovante": "11111111-1111-1111-1111-111111111111",
+          "nome": "Giovanni",
+          "numeroDocumento": "50329291076",
+          "valorTransacao": 23.99,
+          "chavePixDestino": "11948755536"
+        }
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}
