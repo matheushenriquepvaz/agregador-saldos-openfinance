@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      Projeto guiado BE-JV-010 — API de Comprovantes PIX (multi-módulo).
+      Construído ao vivo, aula a aula. Esqueleto: compila já; cada aula preenche os TODOs.
+
+      PERFIS DE EXECUÇÃO (ambiente desta turma = plano-b-jvm, sem Docker):
+        -Pplano-a-docker   Redis/RabbitMQ/Kafka via Docker (referência de produção, NÃO usado nesta turma)
+        -Pplano-b-jvm      pura-JVM: Caffeine, Qpid embarcado, EmbeddedKafka (PADRÃO — piso seguro)
+        -Pplano-c-conceitual  event bus in-process; foco em design
+
+      Piso seguro: roda só com Java 21 + Maven + Nexus Caixa (perfil plano-b-jvm, ativo por padrão).
+      Build:   mvn -s ../../ambiente/settings.xml -Pplano-b-jvm compile
+    -->
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -11,55 +24,44 @@
         <relativePath/>
     </parent>
 
-    <groupId>ada.teste</groupId>
+    <groupId>com.caixa.ada</groupId>
     <artifactId>agregador-saldos-openfinance</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>agregador-saldos-openfinance</name>
-    <description>Agregador de extratos bancários com Finbras e instituições externas</description>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Agregador de extratos bancários de instituições externas</name>
+
+    <modules>
+        <module>shared-contracts</module>
+        <module>extrato-gravador</module>
+        <module>extrato-consulta</module>
+        <module>comprovante-emissor</module>
+    </modules>
 
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <resilience4j.version>2.2.0</resilience4j.version>
+        <pact.version>4.6.14</pact.version>
+        <qpid.version>9.2.0</qpid.version>
+        <embedded-redis.version>1.4.3</embedded-redis.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.caixa.ada</groupId>
+                <artifactId>shared-contracts</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <!-- Comum a todos os módulos/perfis: web + actuator + validação + teste -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-cache</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -67,12 +69,90 @@
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
+    <profiles>
+        <!-- ====== PLANO A — referência de produção (Docker/Testcontainers), NÃO usado nesta turma ====== -->
+        <profile>
+            <id>plano-a-docker</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-redis</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-amqp</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.kafka</groupId>
+                    <artifactId>spring-kafka</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.testcontainers</groupId>
+                    <artifactId>junit-jupiter</artifactId>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- ============ PLANO B — restrito, pura-JVM (PADRÃO) ============ -->
+        <profile>
+            <id>plano-b-jvm</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <!-- Cache: Caffeine atrás da abstração Spring Cache (substitui Redis) -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-cache</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>com.github.ben-manes.caffeine</groupId>
+                    <artifactId>caffeine</artifactId>
+                </dependency>
+                <!-- Filas: Spring AMQP + broker Qpid embarcável (substitui RabbitMQ via Docker) -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-amqp</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.qpid</groupId>
+                    <artifactId>qpid-broker</artifactId>
+                    <version>${qpid.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.sleepycat</groupId>
+                            <artifactId>je</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <!-- Tópicos: broker Kafka in-JVM (substitui Kafka via Docker) -->
+                <dependency>
+                    <groupId>org.springframework.kafka</groupId>
+                    <artifactId>spring-kafka</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.kafka</groupId>
+                    <artifactId>spring-kafka-test</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- ============ PLANO C — conceitual (event bus in-process) ============ -->
+        <profile>
+            <id>plano-c-conceitual</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-cache</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>com.github.ben-manes.caffeine</groupId>
+                    <artifactId>caffeine</artifactId>
+                </dependency>
+                <!-- Sem broker externo: ApplicationEventPublisher / BlockingQueue no próprio código -->
+            </dependencies>
+        </profile>
+    </profiles>
+
 </project>

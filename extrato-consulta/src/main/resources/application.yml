@@ -3,9 +3,9 @@ server:
 
 spring:
   application:
-    name: comprovante-gravador
+    name: extrato-consulta
   datasource:
-    url: jdbc:h2:mem:gravador;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:consulta;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password: ""

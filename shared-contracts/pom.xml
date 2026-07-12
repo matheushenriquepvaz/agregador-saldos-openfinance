@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>br.com.caixa.pix</groupId>
-        <artifactId>comprovantes-pix</artifactId>
+        <groupId>com.caixa.ada</groupId>
+        <artifactId>agregador-saldos-openfinance</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 

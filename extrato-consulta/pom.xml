@@ -5,14 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>br.com.caixa.pix</groupId>
-        <artifactId>comprovantes-pix</artifactId>
+        <groupId>com.caixa.ada</groupId>
+        <artifactId>agregador-saldos-openfinance</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>comprovante-gravador</artifactId>
-    <name>comprovante-gravador</name>
-    <description>Bounded context GRAVAÇÃO: consome a fila, persiste (idempotente) e publica o evento.</description>
+    <artifactId>extrato-consulta</artifactId>
+    <name>extrato-consulta</name>
+    <description>Bounded context CONSULTA: GET por clientId com cache (Redis/Caffeine) e fallback no banco.</description>
 
     <dependencies>
         <dependency>
@@ -29,7 +29,7 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>br.com.caixa.pix</groupId>
+            <groupId>com.caixa.ada</groupId>
             <artifactId>shared-contracts</artifactId>
         </dependency>
         <dependency>
