@@ -1,88 +1,118 @@
-# Agregador de Saldos Open Finance
+# Consolidador de Extrato Open Finance
 
-Projeto Spring Boot para agregação de extratos da Finbras e de instituições externas, com H2 para testes, Swagger e cache Redis.
+Projeto arquitetural orientado a microsservicos para consolidar lancamentos financeiros de multiplas instituicoes e disponibilizar consultas de extrato com alta performance.
+
+## Visao geral
+
+O sistema recebe lancamentos, consolida saldo por cliente e oferece consulta de extrato com cache. A solucao foi desenhada para:
+
+- alta taxa de leitura;
+- resiliencia a picos;
+- desacoplamento entre escrita e consulta;
+- rastreabilidade e governanca de dados.
+
+## Arquitetura
+
+A arquitetura possui tres microsservicos com responsabilidades segregadas:
+
+1. **Servico de Ingestao**
+   - recebe HTTP com lancamentos;
+   - valida regras basicas;
+   - gera `eventoId`;
+   - publica `LancamentoRecebido` no Kafka.
+
+2. **Servico Agregador**
+   - consome eventos de ingestao;
+   - garante idempotencia com `EventoProcessado`;
+   - persiste `Transacao`;
+   - atualiza `SaldoCliente`;
+   - expoe API REST para consulta pelo servico de Consulta;
+   - publica evento `ExtratoAtualizado` para invalidacao de cache.
+
+3. **Servico de Consulta**
+   - expoe APIs de consulta;
+   - usa Redis com Cache Aside;
+   - consulta o Agregador por HTTP;
+   - invalida cache ao consumir `ExtratoAtualizado`.
+
+Documentos detalhados:
+
+- `docs/arquitetura.md`
+- `docs/adrs.md`
+- `user-stories.md`
 
 ## Tecnologias
-- Java 21
-- Spring Boot
-- Spring Data JPA
-- H2 Database
-- Redis Cache
-- Springdoc OpenAPI / Swagger
 
-## Como executar
+- Java / Spring Boot (microsservicos)
+- Apache Kafka (mensageria)
+- Redis (cache)
+- Banco relacional no Agregador (persistencia de consolidacao)
+- Docker e Docker Compose (execucao local no **Perfil A**)
+- Testes de contrato (API e eventos)
 
-1. Suba o Redis localmente na porta `6379`.
-   Exemplo com Docker:
+> A stack exata de versoes pode ser ajustada conforme padrao da turma/projeto final.
+
+## Como executar (Perfil A - Docker)
+
+Fluxo recomendado para avaliacao local:
+
+1. Subir infraestrutura (Kafka, Redis e banco do Agregador).
+2. Subir os tres servicos.
+3. Publicar/receber lancamentos e consultar extrato.
+
+Comandos de referencia (ajustar conforme nomes reais de containers e compose):
 
 ```powershell
-docker run --name redis-finbras -p 6379:6379 redis:7-alpine
+docker compose up -d
+docker compose ps
 ```
 
-2. Rode a aplicação:
+Se os servicos estiverem separados por compose/projeto:
 
 ```powershell
-mvn spring-boot:run
+docker compose -f docker-compose.infra.yml up -d
+docker compose -f docker-compose.apps.yml up -d
 ```
 
-## Swagger
-
-Acesse:
+## Fluxo de eventos
 
 ```text
-http://localhost:8080/swagger-ui.html
+Ingestao (HTTP) -> Kafka (LancamentoRecebido) -> Agregador (processa/persiste/atualiza saldo)
+Agregador -> Kafka (ExtratoAtualizado) -> Consulta (invalida Redis)
+Cliente -> Consulta (cache hit/miss) -> Agregador (quando miss)
 ```
 
-## Endpoints principais
+## Atendimento aos criterios da avaliacao
 
-### Extratos da Finbras
-- `GET /api/extratos/finbras`
-- `GET /api/extratos/finbras/cache`
+- **Decomposicao por dominio:** 3 bounded contexts (Ingestao, Consolidacao, Consulta).
+- **Bases segregadas:** Agregador possui base propria; Consulta usa Redis e nao acessa banco de outro servico.
+- **Comunicacao assincrona:** eventos em Kafka entre servicos.
+- **Consumidor idempotente:** `EventoProcessado` evita duplicidade por `eventoId`.
+- **Cache com invalidacao explicita:** Cache Aside com remocao por evento `ExtratoAtualizado`.
+- **Contract Tests:** validacao de contratos REST e eventos no pipeline.
+- **ADRs:** registrados em `docs/adrs.md`.
+- **README arquitetural:** este documento + detalhamento em `docs/arquitetura.md`.
 
-### Extratos externos
-- `GET /api/extratos/externos`
-- `GET /api/extratos/externos/cache`
-- `GET /api/extratos/externos/{institutionId}`
-- `GET /api/extratos/externos/{institutionId}/cache`
+## Uso de IA no projeto
 
-### Saldo unificado
-- `GET /api/saldos/unificado`
-- `GET /api/saldos/unificado/{institutionId}`
+O projeto utilizou IA como apoio em:
 
-Regras da resposta unificada:
-- quando o lançamento for da Finbras, `sourceBankName` e `sourceBankCnpj` vêm vazios;
-- `movementValue` é sempre positivo;
-- `movementType` indica `DEBITO` ou `CREDITO`;
-- a Finbras é consultada sempre direto;
-- as outras instituições podem ser servidas por cache.
+- estruturacao inicial de documentacao arquitetural;
+- refinamento de textos tecnicos e padronizacao de criterios;
+- revisao de completude dos entregaveis (ADRs, user stories e arquitetura).
 
-### Mensageria mockada
-- `POST /api/mensageria/pedir-extrato`
+A validacao final de decisoes e consistencia tecnica foi realizada pelo time.
 
-Corpo opcional:
+## Perfil de execucao B
 
-```json
-{
-  "institutionId": "BANCO_ALPHA"
-}
-```
+O **perfil oficial da entrega** e o **Perfil A (Docker)**.
 
-Se você não enviar corpo, o sistema simula a solicitação para as 3 instituições externas.
+Ainda assim, o perfil B pode existir para execucao local simplificada (sem containers) em ambiente de desenvolvimento, mantendo os mesmos contratos e fluxos.
 
-### Dados fictícios
-- `POST /api/dev/popular-dados`
+## Justificativa dos fallbacks utilizados
 
-Esse endpoint recria os lançamentos fictícios da Finbras e de 3 instituições externas.
+- **Fallback de consulta:** em cache miss, buscar no Agregador e repopular Redis.
+- **Fallback de processamento:** reprocessamento por retry em falhas temporarias.
+- **Fallback de consistencia:** invalidacao de cache por evento para reduzir defasagem de leitura.
 
-## H2 Console
-
-```text
-http://localhost:8080/h2-console
-```
-
-JDBC URL:
-
-```text
-jdbc:h2:mem:agregador
-```
-
+Esses fallbacks priorizam disponibilidade e desempenho sem comprometer a consistencia de negocio no Agregador.
