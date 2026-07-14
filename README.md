@@ -26,14 +26,12 @@ A arquitetura possui tres microsservicos com responsabilidades segregadas:
    - garante idempotencia com `EventoProcessado`;
    - persiste `Transacao`;
    - atualiza `SaldoCliente`;
-   - expoe API REST para consulta pelo servico de Consulta;
-   - publica evento `ExtratoAtualizado` para invalidacao de cache.
+    - expoe API REST para consulta pelo servico de Consulta.
 
 3. **Servico de Consulta**
    - expoe APIs de consulta;
    - usa Redis com Cache Aside;
-   - consulta o Agregador por HTTP;
-   - invalida cache ao consumir `ExtratoAtualizado`.
+    - consulta o Agregador por HTTP.
 
 Documentos detalhados:
 
@@ -78,7 +76,6 @@ docker compose -f docker-compose.apps.yml up -d
 
 ```text
 Ingestao (HTTP) -> Kafka (LancamentoRecebido) -> Agregador (processa/persiste/atualiza saldo)
-Agregador -> Kafka (ExtratoAtualizado) -> Consulta (invalida Redis)
 Cliente -> Consulta (cache hit/miss) -> Agregador (quando miss)
 ```
 
@@ -86,9 +83,9 @@ Cliente -> Consulta (cache hit/miss) -> Agregador (quando miss)
 
 - **Decomposicao por dominio:** 3 bounded contexts (Ingestao, Consolidacao, Consulta).
 - **Bases segregadas:** Agregador possui base propria; Consulta usa Redis e nao acessa banco de outro servico.
-- **Comunicacao assincrona:** eventos em Kafka entre servicos.
+- **Comunicacao assincrona:** eventos em Kafka entre Ingestao e Agregador.
 - **Consumidor idempotente:** `EventoProcessado` evita duplicidade por `eventoId`.
-- **Cache com invalidacao explicita:** Cache Aside com remocao por evento `ExtratoAtualizado`.
+- **Cache com expiracao:** Cache Aside com TTL no servico de Consulta.
 - **Contract Tests:** validacao de contratos REST e eventos no pipeline.
 - **ADRs:** registrados em `docs/adrs.md`.
 - **README arquitetural:** este documento + detalhamento em `docs/arquitetura.md`.
@@ -113,6 +110,6 @@ Ainda assim, o perfil B pode existir para execucao local simplificada (sem conta
 
 - **Fallback de consulta:** em cache miss, buscar no Agregador e repopular Redis.
 - **Fallback de processamento:** reprocessamento por retry em falhas temporarias.
-- **Fallback de consistencia:** invalidacao de cache por evento para reduzir defasagem de leitura.
+- **Fallback de consistencia:** expiracao por TTL no cache para reduzir defasagem de leitura.
 
 Esses fallbacks priorizam disponibilidade e desempenho sem comprometer a consistencia de negocio no Agregador.

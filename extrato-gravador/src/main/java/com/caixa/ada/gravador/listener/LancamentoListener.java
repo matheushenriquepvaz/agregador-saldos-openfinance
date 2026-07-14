@@ -1,9 +1,9 @@
 package com.caixa.ada.gravador.listener;
 
 import com.caixa.ada.contracts.GravarLancamentoCommand;
-import com.caixa.ada.gravador.configuration.MessagingConfig;
+import com.caixa.ada.gravador.configuration.KafkaConfig;
 import com.caixa.ada.gravador.service.GravadorService;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,7 +15,7 @@ public class LancamentoListener {
         this.gravadorService = gravadorService;
     }
 
-    @RabbitListener(queues = MessagingConfig.FILA)
+    @KafkaListener(topics = KafkaConfig.TOPICO_LANCAMENTOS, groupId = KafkaConfig.GRUPO_CONSUMIDOR)
     public void aoReceber(GravarLancamentoCommand command) {
         gravadorService.gravar(command);
     }

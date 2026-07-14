@@ -4,7 +4,6 @@ import com.caixa.ada.contracts.GravarLancamentoCommand;
 import com.caixa.ada.contracts.RecebimentoLancamentoRequest;
 import com.caixa.ada.contracts.TipoLancamento;
 import com.caixa.ada.gravador.entity.SaldoClienteEntity;
-import com.caixa.ada.gravador.publisher.EventoPublisher;
 import com.caixa.ada.gravador.repository.EventoProcessadoRepository;
 import com.caixa.ada.gravador.repository.SaldoClienteRepository;
 import com.caixa.ada.gravador.repository.TransacaoRepository;
@@ -40,9 +39,6 @@ class GravadorServiceTest {
     @Mock
     private EventoProcessadoRepository eventoProcessadoRepository;
 
-    @Mock
-    private EventoPublisher eventoPublisher;
-
     @InjectMocks
     private GravadorService service;
 
@@ -55,7 +51,6 @@ class GravadorServiceTest {
 
         assertFalse(processado);
         verify(transacaoRepository, never()).save(any());
-        verify(eventoPublisher, never()).publicar(any());
     }
 
     @Test
@@ -87,4 +82,3 @@ class GravadorServiceTest {
         );
     }
 }
-

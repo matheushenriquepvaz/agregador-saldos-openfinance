@@ -1,6 +1,5 @@
 package com.caixa.ada.gravador.service;
 
-import com.caixa.ada.contracts.ExtratoAtualizadoEvent;
 import com.caixa.ada.contracts.ExtratoView;
 import com.caixa.ada.contracts.GravarLancamentoCommand;
 import com.caixa.ada.contracts.TipoLancamento;
@@ -8,7 +7,6 @@ import com.caixa.ada.contracts.TransacaoView;
 import com.caixa.ada.gravador.entity.EventoProcessadoEntity;
 import com.caixa.ada.gravador.entity.SaldoClienteEntity;
 import com.caixa.ada.gravador.entity.TransacaoEntity;
-import com.caixa.ada.gravador.publisher.EventoPublisher;
 import com.caixa.ada.gravador.repository.EventoProcessadoRepository;
 import com.caixa.ada.gravador.repository.SaldoClienteRepository;
 import com.caixa.ada.gravador.repository.TransacaoRepository;
@@ -25,18 +23,15 @@ public class GravadorService {
     private final TransacaoRepository transacaoRepository;
     private final SaldoClienteRepository saldoClienteRepository;
     private final EventoProcessadoRepository eventoProcessadoRepository;
-    private final EventoPublisher eventoPublisher;
 
     public GravadorService(
             TransacaoRepository transacaoRepository,
             SaldoClienteRepository saldoClienteRepository,
-            EventoProcessadoRepository eventoProcessadoRepository,
-            EventoPublisher eventoPublisher
+            EventoProcessadoRepository eventoProcessadoRepository
     ) {
         this.transacaoRepository = transacaoRepository;
         this.saldoClienteRepository = saldoClienteRepository;
         this.eventoProcessadoRepository = eventoProcessadoRepository;
-        this.eventoPublisher = eventoPublisher;
     }
 
     @Transactional
@@ -61,7 +56,6 @@ public class GravadorService {
 
         saldoClienteRepository.save(saldo);
         eventoProcessadoRepository.save(new EventoProcessadoEntity(command.eventoId(), processadoEm));
-        eventoPublisher.publicar(new ExtratoAtualizadoEvent(command.eventoId(), command.dados().clienteId(), processadoEm));
         return true;
     }
 
@@ -100,4 +94,3 @@ public class GravadorService {
         );
     }
 }
-
