@@ -120,3 +120,44 @@ Este repositorio contem os artefatos de arquitetura, requisitos e rastreabilidad
 - justificativas tecnicas registradas em ADR;
 - historias de usuario e requisitos consolidados;
 - alinhamento com confiabilidade, desempenho e compliance.
+
+## Uso crítico de IA no projeto
+
+### Como foi utilizada
+
+A IA foi empregada como ferramenta de apoio ao processo de engenharia, não como fonte de verdade arquitetural:
+
+- **Consolidação de documentação:** estruturacao de templates para ADRs, sessions de requisitos e user stories.
+- **Refinamento textual:** clareza e padronizacao de descrições tecnicas em documentos compilados.
+- **Geração de rasunchos iniciais:** user stories com formato Dado/Quando/Entao; personas baseadas em padrões de contexto.
+- **Revisão de completude:** sugestões sobre quais tópicos faltavam em seções de requisitos ou arquitetura.
+
+### O que foi validado manualmente (rigorosamente)
+
+1. **Decisões arquiteturais:** cada ADR passou por validacao comparativa — alternativas sugeridas vs. decisão tomada nas sessões de requisitos. Trade-offs reais explicitados.
+
+2. **Numericos críticos:** 3 tentativas de retry, 10 minutos de TTL, 4/5/1 de formato de agência/conta/dígito — verificados contra sessions e código.
+
+3. **Termos de negócio:** linguagem ubíqua ("lançamento", "consolidação", "extrato", "eventoId") alinhada com sessions originais em `docs_referencia/requisitos/`.
+
+4. **Propriedades de código:**
+   - Idempotência: verificação manual que `EventoProcessado` e `@Transactional` funcionam juntos.
+   - Cache: validação de que Caffeine com TTL está configurado.
+   - Retry: confirmação de que `ConsultaService` tenta 3 vezes.
+
+5. **Compliance e regulatório:** retenção (5 anos), LGPD, auditoria — mapeados como fora de escopo MVP, não inventados como implementados.
+
+6. **Execução:** comandos de build e run foram testados manualmente no ambiente.
+
+### Risco mitigado
+
+**Não confiamos em IA pura para:**
+- Gerar código de produção sem validação (toda geração de código foi revisada e testada).
+- Decidir trade-offs arquiteturais (decisões vieram de análise humana de alternativas).
+- Compilar requisitos sem confronto com transcrições originais (cada requisito foi mapeado à sessão de origem).
+
+### Conclusão crítica
+
+A IA acelerou o processo de documentação e estruturação, mas a **validação técnica e de design foi e permanecer exclusivamente humana**. Sem essa validação rigorosa, a documentação teria sido superficial e enganosa. O time manteve a IA como ferramenta de produtividade, não como autoridade técnica.
+
+Referência completa: `REFLEXAO-USO-IA.md`.
