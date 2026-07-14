@@ -1,115 +1,122 @@
-# Consolidador de Extrato Open Finance
+# Agregador de Saldos Open Finance
 
-Projeto arquitetural orientado a microsservicos para consolidar lancamentos financeiros de multiplas instituicoes e disponibilizar consultas de extrato com alta performance.
+Projeto final de arquitetura e microsservicos para consolidar lancamentos financeiros de multiplas instituicoes e disponibilizar consulta de extrato com baixa latencia, resiliencia e rastreabilidade.
 
-## Visao geral
+## Objetivo
 
-O sistema recebe lancamentos, consolida saldo por cliente e oferece consulta de extrato com cache. A solucao foi desenhada para:
+Entregar um sistema orientado a dominio que:
 
-- alta taxa de leitura;
-- resiliencia a picos;
-- desacoplamento entre escrita e consulta;
-- rastreabilidade e governanca de dados.
+- receba lancamentos de forma desacoplada;
+- consolide saldo por cliente com idempotencia;
+- exponha consulta de extrato com estrategia de cache;
+- atenda requisitos de confiabilidade, desempenho e compliance.
 
-## Arquitetura
+## Escopo do MVP
 
-A arquitetura possui tres microsservicos com responsabilidades segregadas:
+Inclui:
 
-1. **Servico de Ingestao**
-   - recebe HTTP com lancamentos;
-   - valida regras basicas;
-   - gera `eventoId`;
-   - publica `LancamentoRecebido` no Kafka.
+- ingestao de lancamentos via API;
+- processamento assincrono e consolidacao de saldo;
+- consulta de extrato por `clienteId`;
+- cache-aside na leitura;
+- rastreabilidade de processamento.
 
-2. **Servico Agregador**
-   - consome eventos de ingestao;
-   - garante idempotencia com `EventoProcessado`;
-   - persiste `Transacao`;
-   - atualiza `SaldoCliente`;
-    - expoe API REST para consulta pelo servico de Consulta.
+Fora do escopo imediato:
 
-3. **Servico de Consulta**
-   - expoe APIs de consulta;
-   - usa Redis com Cache Aside;
-    - consulta o Agregador por HTTP.
+- interface grafica para usuario final;
+- notificacoes ao cliente multicanal;
+- analiticos avancados e motor dedicado de BI.
 
-Documentos detalhados:
+## Arquitetura da solucao
 
-- `docs/arquitetura.md`
-- `docs/adrs.md`
-- `user-stories.md`
+O desenho arquitetural esta representado em `arquitetura.png` e detalhado em `docs_referencia/arquitetura.md`.
 
-## Tecnologias
+### Bounded contexts
 
-- Java / Spring Boot (microsservicos)
-- Apache Kafka (mensageria)
-- Redis (cache)
-- Banco relacional no Agregador (persistencia de consolidacao)
-- Docker e Docker Compose (execucao local no **Perfil A**)
-- Testes de contrato (API e eventos)
+1. **Ingestao (`extrato-ingestor`)**
+   - recebe e valida lancamentos;
+   - gera identificador de evento;
+   - publica evento para processamento.
 
-> A stack exata de versoes pode ser ajustada conforme padrao da turma/projeto final.
+2. **Gravacao/Consolidacao (`extrato-gravador`)**
+   - consome eventos;
+   - garante idempotencia por `eventoId`;
+   - persiste transacoes e atualiza saldo consolidado.
 
-## Como executar (Perfil A - Docker)
+3. **Consulta (`extrato-consulta`)**
+   - expoe API de leitura;
+   - aplica cache-aside;
+   - consulta a fonte consolidada em caso de cache miss.
 
-Fluxo recomendado para avaliacao local:
+4. **Contratos compartilhados (`shared-contracts`)**
+   - centraliza DTOs e contratos para reduzir acoplamento sem duplicacao.
 
-1. Subir infraestrutura (Kafka, Redis e banco do Agregador).
-2. Subir os tres servicos.
-3. Publicar/receber lancamentos e consultar extrato.
+## Decisoes arquiteturais principais
 
-Comandos de referencia (ajustar conforme nomes reais de containers e compose):
+- Decomposicao em tres contextos para escalar escrita e leitura de forma independente.
+- Comunicacao assincrona por eventos para absorver picos de volumetria.
+- Idempotencia no consumidor para evitar duplicidade de transacao/saldo.
+- Cache-aside na consulta para reduzir latencia.
+- Consistencia eventual entre servicos.
+
+Detalhamento em `docs/adr/`.
+
+## Requisitos nao funcionais cobertos
+
+- **Desempenho:** baixa latencia na consulta, inclusive em picos.
+- **Confiabilidade:** retries em falhas temporarias e estrategia para mensagens problematicas.
+- **Escalabilidade:** desacoplamento entre recebimento e consolidacao.
+- **Auditabilidade:** trilha de processamento e base para trilha de acesso.
+- **Compliance:** diretrizes de LGPD e retencao documental conforme requisitos.
+
+## Estrutura do repositorio
+
+- `extrato-ingestor/`: API de ingestao e publicacao de eventos.
+- `extrato-gravador/`: processamento, persistencia e consolidacao.
+- `extrato-consulta/`: API de consulta e cache.
+- `shared-contracts/`: contratos compartilhados.
+- `infra/docker-compose.yml`: infraestrutura local (Kafka/Redis).
+- `docs_referencia/`: arquitetura, requisitos, ADRs e materiais de apoio.
+
+## Como executar localmente
+
+Com base no `pom.xml` da raiz, o perfil padrao e `plano-b-jvm` (ativo por default). O perfil `plano-a-docker` tambem existe para executar com infraestrutura conteinerizada.
+
+### Build e testes
 
 ```powershell
-docker compose up -d
-docker compose ps
+mvn clean test
 ```
 
-Se os servicos estiverem separados por compose/projeto:
+### Infraestrutura (opcional para perfil docker)
 
 ```powershell
-docker compose -f docker-compose.infra.yml up -d
-docker compose -f docker-compose.apps.yml up -d
+docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml ps
 ```
 
-## Fluxo de eventos
+### Subir os servicos por modulo (exemplo)
 
-```text
-Ingestao (HTTP) -> Kafka (LancamentoRecebido) -> Agregador (processa/persiste/atualiza saldo)
-Cliente -> Consulta (cache hit/miss) -> Agregador (quando miss)
+```powershell
+mvn -pl extrato-ingestor spring-boot:run
+mvn -pl extrato-gravador spring-boot:run
+mvn -pl extrato-consulta spring-boot:run
 ```
 
-## Atendimento aos criterios da avaliacao
+## Documentacao da entrega
 
-- **Decomposicao por dominio:** 3 bounded contexts (Ingestao, Consolidacao, Consulta).
-- **Bases segregadas:** Agregador possui base propria; Consulta usa Redis e nao acessa banco de outro servico.
-- **Comunicacao assincrona:** eventos em Kafka entre Ingestao e Agregador.
-- **Consumidor idempotente:** `EventoProcessado` evita duplicidade por `eventoId`.
-- **Cache com expiracao:** Cache Aside com TTL no servico de Consulta.
-- **Contract Tests:** validacao de contratos REST e eventos no pipeline.
-- **ADRs:** registrados em `docs/adrs.md`.
-- **README arquitetural:** este documento + detalhamento em `docs/arquitetura.md`.
+- `docs/`: arquitetura, ADRs estruturados por decisão.
+- `docs_referencia/arquitetura.md`: desenho arquitetural detalhado e fluxos.
+- `docs_referencia/adr/adrs.md`: ADRs da referência.
+- `docs_referencia/requisitos/TRANSCRICOES-CONSOLIDADAS.md`: consolidado das sessoes de requisitos.
+- `AVALIACAO.md`: matriz de aderencia aos criterios de avaliacao.
+- `REFLEXAO-USO-IA.md`: reflexao sobre aplicacao de IA no processo.
 
-## Uso de IA no projeto
+## Evidencias para banca
 
-O projeto utilizou IA como apoio em:
+Este repositorio contem os artefatos de arquitetura, requisitos e rastreabilidade solicitados para avaliacao final, incluindo:
 
-- estruturacao inicial de documentacao arquitetural;
-- refinamento de textos tecnicos e padronizacao de criterios;
-- revisao de completude dos entregaveis (ADRs, user stories e arquitetura).
-
-A validacao final de decisoes e consistencia tecnica foi realizada pelo time.
-
-## Perfil de execucao B
-
-O **perfil oficial da entrega** e o **Perfil A (Docker)**.
-
-Ainda assim, o perfil B pode existir para execucao local simplificada (sem containers) em ambiente de desenvolvimento, mantendo os mesmos contratos e fluxos.
-
-## Justificativa dos fallbacks utilizados
-
-- **Fallback de consulta:** em cache miss, buscar no Agregador e repopular Redis.
-- **Fallback de processamento:** reprocessamento por retry em falhas temporarias.
-- **Fallback de consistencia:** expiracao por TTL no cache para reduzir defasagem de leitura.
-
-Esses fallbacks priorizam disponibilidade e desempenho sem comprometer a consistencia de negocio no Agregador.
+- visao de contexto e decomposicao de dominios;
+- justificativas tecnicas registradas em ADR;
+- historias de usuario e requisitos consolidados;
+- alinhamento com confiabilidade, desempenho e compliance.
