@@ -88,10 +88,10 @@ Para a entrega do projeto, o perfil adotado pelo grupo foi o **Perfil A (`plano-
 mvn -Pplano-a-docker clean test
 ```
 
-### Infraestrutura (perfil A)
+### Infraestrutura (Docker)
 
 ```powershell
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml up --build -d
 docker compose -f infra/docker-compose.yml ps
 ```
 
@@ -102,6 +102,12 @@ mvn -Pplano-a-docker -pl extrato-ingestor spring-boot:run
 mvn -Pplano-a-docker -pl extrato-gravador spring-boot:run
 mvn -Pplano-a-docker -pl extrato-consulta spring-boot:run
 ```
+
+### Swagger
+
+- `http://localhost:8081/swagger-ui/index.html`
+- `http://localhost:8082/swagger-ui/index.html`
+- `http://localhost:8083/swagger-ui/index.html`
 
 ## Documentacao da entrega
 
