@@ -35,11 +35,11 @@ ON CONFLICT (cliente_id) DO NOTHING;
 
 INSERT INTO transacoes (evento_id, cliente_id, instituicao_id, tipo, valor, descricao, data_lancamento, data_processamento)
 VALUES
-  (gen_random_uuid(), 'cliente-001', 'inst-001', 'CREDITO', 1500.00, 'SALARIO', CURRENT_DATE - INTERVAL '2 day', NOW() - INTERVAL '2 day'),
-  (gen_random_uuid(), 'cliente-001', 'inst-001', 'DEBITO', 200.00, 'MERCADO', CURRENT_DATE - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
-  (gen_random_uuid(), 'cliente-002', 'inst-002', 'CREDITO', 2500.50, 'TRANSFERENCIA', CURRENT_DATE - INTERVAL '3 day', NOW() - INTERVAL '3 day'),
-  (gen_random_uuid(), 'cliente-002', 'inst-002', 'DEBITO', 50.00, 'TARIFA', CURRENT_DATE - INTERVAL '2 day', NOW() - INTERVAL '2 day'),
-  (gen_random_uuid(), 'cliente-003', 'inst-001', 'DEBITO', 120.75, 'CONTA LUZ', CURRENT_DATE - INTERVAL '1 day', NOW() - INTERVAL '1 day');
+  (gen_random_uuid(), 'cliente-001', 'inst-001', 'CREDITO', 1500.00, 'SALARIO', DATE '2026-07-12', NOW() - INTERVAL '2 day'),
+  (gen_random_uuid(), 'cliente-001', 'inst-001', 'DEBITO', 200.00, 'MERCADO', DATE '2026-07-13', NOW() - INTERVAL '1 day'),
+  (gen_random_uuid(), 'cliente-002', 'inst-002', 'CREDITO', 2500.50, 'TRANSFERENCIA', DATE '2026-07-11', NOW() - INTERVAL '3 day'),
+  (gen_random_uuid(), 'cliente-002', 'inst-002', 'DEBITO', 50.00, 'TARIFA', DATE '2026-07-12', NOW() - INTERVAL '2 day'),
+  (gen_random_uuid(), 'cliente-003', 'inst-001', 'DEBITO', 120.75, 'CONTA LUZ', DATE '2026-07-13', NOW() - INTERVAL '1 day');
 
 INSERT INTO eventos_processados (evento_id, data_processamento)
 VALUES
