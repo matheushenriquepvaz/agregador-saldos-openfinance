@@ -56,15 +56,16 @@ services:
     restart: unless-stopped
 
   extrato-gravador:
-    image: eclipse-temurin:21-jdk
+    image: extrato-gravador:local
     container_name: extrato-gravador
+    build:
+      context: ..
+      dockerfile: extrato-gravador/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    working_dir: /app
-    command: ["java", "-jar", "/app/extrato-gravador.jar"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gravador
@@ -73,40 +74,36 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-    volumes:
-      - ../extrato-gravador/target/extrato-gravador-0.0.1-SNAPSHOT.jar:/app/extrato-gravador.jar:ro
     ports:
       - "8082:8082"
     restart: unless-stopped
 
   extrato-ingestor:
-    image: eclipse-temurin:21-jdk
+    image: extrato-ingestor:local
     container_name: extrato-ingestor
+    build:
+      context: ..
+      dockerfile: extrato-ingestor/Dockerfile
     depends_on:
       kafka:
         condition: service_healthy
-    working_dir: /app
-    command: ["java", "-jar", "/app/extrato-ingestor.jar"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - ../extrato-ingestor/target/extrato-ingestor-0.0.1-SNAPSHOT.jar:/app/extrato-ingestor.jar:ro
     ports:
       - "8081:8081"
     restart: unless-stopped
 
   extrato-consulta:
-    image: eclipse-temurin:21-jdk
+    image: extrato-consulta:local
     container_name: extrato-consulta
+    build:
+      context: ..
+      dockerfile: extrato-consulta/Dockerfile
     depends_on:
       extrato-gravador:
         condition: service_started
-    working_dir: /app
-    command: ["java", "-jar", "/app/extrato-consulta.jar"]
     environment:
       GRAVADOR_BASE_URL: http://extrato-gravador:8082
-    volumes:
-      - ../extrato-consulta/target/extrato-consulta-0.0.1-SNAPSHOT.jar:/app/extrato-consulta.jar:ro
     ports:
       - "8083:8083"
     restart: unless-stopped
