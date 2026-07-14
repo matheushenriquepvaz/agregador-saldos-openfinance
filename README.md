@@ -80,15 +80,15 @@ Detalhamento em `docs/adr/`.
 
 ## Como executar localmente
 
-Com base no `pom.xml` da raiz, o perfil padrao e `plano-b-jvm` (ativo por default). O perfil `plano-a-docker` tambem existe para executar com infraestrutura conteinerizada.
+Para a entrega do projeto, o perfil adotado pelo grupo foi o **Perfil A (`plano-a-docker`)**.
 
 ### Build e testes
 
 ```powershell
-mvn clean test
+mvn -Pplano-a-docker clean test
 ```
 
-### Infraestrutura (opcional para perfil docker)
+### Infraestrutura (perfil A)
 
 ```powershell
 docker compose -f infra/docker-compose.yml up -d
@@ -98,9 +98,9 @@ docker compose -f infra/docker-compose.yml ps
 ### Subir os servicos por modulo (exemplo)
 
 ```powershell
-mvn -pl extrato-ingestor spring-boot:run
-mvn -pl extrato-gravador spring-boot:run
-mvn -pl extrato-consulta spring-boot:run
+mvn -Pplano-a-docker -pl extrato-ingestor spring-boot:run
+mvn -Pplano-a-docker -pl extrato-gravador spring-boot:run
+mvn -Pplano-a-docker -pl extrato-consulta spring-boot:run
 ```
 
 ## Documentacao da entrega

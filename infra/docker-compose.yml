@@ -1,45 +1,112 @@
 services:
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: gravador
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "6379:6379"
+      - "5432:5432"
+    volumes:
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/01-postgres-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gravador"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-
-#  kafka:
-#    image: confluentinc/cp-kafka:latest
-#    container_name: kafka
-#    depends_on:
-#      - zookeeper
-#    ports:
-#      - "9092:9092"
-#    environment:
-#      KAFKA_BROKER_ID: 1
-#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#    restart: unless-stopped
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_started
     ports:
       - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  extrato-gravador:
+    image: eclipse-temurin:21-jdk
+    container_name: extrato-gravador
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    working_dir: /app
+    command: ["java", "-jar", "/app/extrato-gravador.jar"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gravador
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    volumes:
+      - ../extrato-gravador/target/extrato-gravador-0.0.1-SNAPSHOT.jar:/app/extrato-gravador.jar:ro
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
+  extrato-ingestor:
+    image: eclipse-temurin:21-jdk
+    container_name: extrato-ingestor
+    depends_on:
+      kafka:
+        condition: service_healthy
+    working_dir: /app
+    command: ["java", "-jar", "/app/extrato-ingestor.jar"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - ../extrato-ingestor/target/extrato-ingestor-0.0.1-SNAPSHOT.jar:/app/extrato-ingestor.jar:ro
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  extrato-consulta:
+    image: eclipse-temurin:21-jdk
+    container_name: extrato-consulta
+    depends_on:
+      extrato-gravador:
+        condition: service_started
+    working_dir: /app
+    command: ["java", "-jar", "/app/extrato-consulta.jar"]
+    environment:
+      GRAVADOR_BASE_URL: http://extrato-gravador:8082
+    volumes:
+      - ../extrato-consulta/target/extrato-consulta-0.0.1-SNAPSHOT.jar:/app/extrato-consulta.jar:ro
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
