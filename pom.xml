@@ -34,6 +34,7 @@
         <module>shared-contracts</module>
         <module>extrato-gravador</module>
         <module>extrato-consulta</module>
+        <module>extrato-ingestor</module>
     </modules>
 
     <properties>

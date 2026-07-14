@@ -1,11 +1,11 @@
-package com.caixa.ada.gravador;
+package com.caixa.ada.ingestor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class GravadorApplication {
+public class IngestorApplication {
     public static void main(String[] args) {
-        SpringApplication.run(GravadorApplication.class, args);
+        SpringApplication.run(IngestorApplication.class, args);
     }
 }

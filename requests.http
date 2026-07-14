@@ -1,0 +1,8 @@
+### health gravador
+GET http://localhost:8082/actuator/health
+
+### health consulta
+GET http://localhost:8083/actuator/health
+
+### health ingestor
+GET http://localhost:8081/actuator/health

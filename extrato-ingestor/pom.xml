@@ -10,8 +10,8 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>extrato-consulta</artifactId>
-    <name>extrato-consulta</name>
+    <artifactId>extrato-ingestor</artifactId>
+    <name>extrato-ingestor</name>
     <description>Bounded context CONSULTA: GET por clientId com cache (Redis/Caffeine) e fallback no banco.</description>
 
     <dependencies>
